@@ -5,6 +5,8 @@ from .models import CustomUser
 from .serializers import RegisterSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.views import APIView
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -65,13 +67,28 @@ class LoginView(TokenObtainPairView):
         }, status=status.HTTP_200_OK)
         
 # User Logout View
-class LogoutView(generics.GenericAPIView):
+class LogoutView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
-        # Invalidate the token here (if using a blacklist or custom logic)
-        return Response({
-            "data": None,
-            "message": "Logout successful",
-            "status_code": status.HTTP_200_OK
-        }, status=status.HTTP_200_OK)
+        refresh_token = request.data.get("refresh")
+        if not refresh_token:
+            return Response({
+                "data": None,
+                "message": "Refresh token required for logout.",
+                "status_code": status.HTTP_400_BAD_REQUEST
+            }, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            return Response({
+                "data": None,
+                "message": "Logout successful",
+                "status_code": status.HTTP_200_OK
+            }, status=status.HTTP_200_OK)
+        except Exception:
+            return Response({
+                "data": None,
+                "message": "Invalid token.",
+                "status_code": status.HTTP_400_BAD_REQUEST
+            }, status=status.HTTP_400_BAD_REQUEST)

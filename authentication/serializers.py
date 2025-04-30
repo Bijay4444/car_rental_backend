@@ -18,3 +18,8 @@ class RegisterSerializer(serializers.ModelSerializer):
             login_device_info=validated_data.get('login_device_info')
         )
         return user
+
+class BiometricToggleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ['is_fingerprint_enabled', 'login_device_info']

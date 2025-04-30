@@ -7,6 +7,9 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from .serializers import BiometricToggleSerializer
+
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -66,7 +69,7 @@ class LoginView(TokenObtainPairView):
             "status_code": status.HTTP_200_OK
         }, status=status.HTTP_200_OK)
         
-# User Logout View
+# User Logout View with Blacklist
 class LogoutView(APIView):
     permission_classes = [AllowAny]
 
@@ -92,3 +95,24 @@ class LogoutView(APIView):
                 "message": "Invalid token.",
                 "status_code": status.HTTP_400_BAD_REQUEST
             }, status=status.HTTP_400_BAD_REQUEST)
+
+#Biometric Toggle View            
+class BiometricToggleView(generics.UpdateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = BiometricToggleSerializer
+
+    def get_object(self):
+        # Return the currently authenticated user
+        return self.request.user
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', True)  # Allow partial updates
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response({
+            "data": serializer.data,
+            "message": "Biometric login settings updated successfully",
+            "status_code": status.HTTP_200_OK
+        }, status=status.HTTP_200_OK)

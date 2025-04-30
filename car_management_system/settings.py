@@ -43,10 +43,10 @@ INSTALLED_APPS = [
     
     #thrid party apps
     'rest_framework',
+    'rest_framework.authtoken',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
-
-    
+    'dj_rest_auth',
     
 ]
 
@@ -155,3 +155,14 @@ SIMPLE_JWT = {
     'USER_ID_CLAIM': 'user_id',
 }
 
+
+# Email settings
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+#Use JWT with dj-rest-auth
+REST_USE_JWT = True
+REST_FRAMEREST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+}

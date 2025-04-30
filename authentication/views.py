@@ -1,16 +1,22 @@
 from rest_framework import generics, status
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
-from .models import CustomUser
-from .serializers import RegisterSerializer
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
-from .serializers import BiometricToggleSerializer
 
+from .models import CustomUser
+from .serializers import( 
+                         RegisterSerializer,
+                         BiometricToggleSerializer,
+                         ChangePasswordSerializer,
+                         )
 
+from django.contrib.auth import update_session_auth_hash
+from .serializers import UserProfileSerializer
+
+# Custom Token Serializer 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
@@ -20,10 +26,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['full_name'] = user.full_name
         return token
 
-class CustomTokenObtainPairView(TokenObtainPairView):
-    serializer_class = CustomTokenObtainPairSerializer
-    
-#User Registration View
+#-----Registration 
  
 class RegisterView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
@@ -49,7 +52,7 @@ class RegisterView(generics.CreateAPIView):
         }, status=status.HTTP_201_CREATED
                         )
 
-# User Login View
+#------Login
 class LoginView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
@@ -96,7 +99,7 @@ class LogoutView(APIView):
                 "status_code": status.HTTP_400_BAD_REQUEST
             }, status=status.HTTP_400_BAD_REQUEST)
 
-#Biometric Toggle View            
+#------Biometric Toggle           
 class BiometricToggleView(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = BiometricToggleSerializer
@@ -116,3 +119,52 @@ class BiometricToggleView(generics.UpdateAPIView):
             "message": "Biometric login settings updated successfully",
             "status_code": status.HTTP_200_OK
         }, status=status.HTTP_200_OK)
+
+
+#-----Change Password
+class ChangePasswordView(generics.GenericAPIView):
+    serializer_class = ChangePasswordSerializer
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            old_password = serializer.validated_data['old_password']
+            new_password1 = serializer.validated_data['new_password1']
+            new_password2 = serializer.validated_data['new_password2']
+
+            if not request.user.check_password(old_password):
+                return Response({
+                    "data": None,
+                    "message": "Incorrect old password.",
+                    "status_code": status.HTTP_400_BAD_REQUEST
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            if new_password1 != new_password2:
+                return Response({
+                    "data": None,
+                    "message": "New passwords do not match.",
+                    "status_code": status.HTTP_400_BAD_REQUEST
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            request.user.set_password(new_password1)
+            request.user.save()
+
+            # Update session to prevent logout after password change
+            update_session_auth_hash(request, request.user)
+
+            return Response({
+                "data": None,
+                "message": "Password changed successfully.",
+                "status_code": status.HTTP_200_OK
+            }, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#-----User Profile
+class UserProfileView(generics.RetrieveUpdateAPIView):
+    serializer_class = UserProfileSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user

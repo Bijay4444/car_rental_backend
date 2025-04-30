@@ -23,3 +23,15 @@ class BiometricToggleSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ['is_fingerprint_enabled', 'login_device_info']
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password1 = serializers.CharField(required=True, min_length=8)  # Minimum password length
+    new_password2 = serializers.CharField(required=True, min_length=8)
+    
+class UserProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ['email', 'full_name', 'user_image_url']
+        read_only_fields = ['email']  
+

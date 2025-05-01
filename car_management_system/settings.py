@@ -166,3 +166,23 @@ REST_FRAMEREST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
 }
+
+# Media files settings
+# MEDIA_URL is the URL that will serve the media files
+# MEDIA_ROOT is the filesystem path to the directory where media files are stored
+MEDIA_URL = '/media/'  # URL to serve media files
+MEDIA_ROOT = BASE_DIR / 'media'  # Directory where media files are stored
+
+# Static files settings
+import os
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+STATIC_URL = '/static/'  # URL prefix to access static files
+
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),  # Directory where you put your static files during development
+]
+
+# Optional: Where `collectstatic` will collect all static files for production
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')

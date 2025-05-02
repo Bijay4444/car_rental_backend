@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     
     #local apps
     'authentication',
+    'cars',
     
     #thrid party apps
     'rest_framework',

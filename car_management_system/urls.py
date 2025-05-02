@@ -32,6 +32,7 @@ urlpatterns = [
     path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
     
     path('api/authentication/', include('authentication.urls')),
+    path('api/cars/', include('cars.urls')), 
 ]
 
 # Serve static and media files in development

@@ -31,8 +31,12 @@ urlpatterns = [
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
     
-    path('api/authentication/', include('authentication.urls')),
-    path('api/cars/', include('cars.urls')), 
+    # Authentication App
+    path('api/authentication/', include('authentication.urls')),# handles custom auth endpoints
+    path('api/authentication/', include('dj_rest_auth.urls')),# dj-rest-auth endpoints(password reset, etc.)
+    path('api/authentication/', include('django.contrib.auth.urls')),# provides standard auth URLs(password rest confirm, etc.)
+    
+    # path('api/cars/', include('cars.urls')), 
 ]
 
 # Serve static and media files in development

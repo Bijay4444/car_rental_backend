@@ -4,6 +4,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.views import APIView
 
 from .models import CustomUser
@@ -13,18 +14,39 @@ from .serializers import(
                          ChangePasswordSerializer,
                          )
 
-from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth import update_session_auth_hash, authenticate, get_user_model
 from .serializers import UserProfileSerializer
+
+User = get_user_model()
 
 # Custom Token Serializer 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    @classmethod
-    def get_token(cls, user):
-        token = super().get_token(user)
-        # Add custom claims if needed
-        token['email'] = user.email
-        token['full_name'] = user.full_name
-        return token
+
+    def validate(self, attrs):
+        email = attrs.get("email")
+        password = attrs.get("password")
+
+        # Check if user with this email exists
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            # Email not found - raise custom error with code 222
+            raise AuthenticationFailed({
+                "detail": "No active account found with the given credentials",
+                "status_code": 222
+            })
+
+        # Email exists, check password
+        user = authenticate(email=email, password=password)
+        if user is None:
+            # Password incorrect - raise custom error with code 111
+            raise AuthenticationFailed({
+                "detail": "Invalid password",
+                "status_code": 111
+            })
+
+        # If authentication successful, proceed with normal flow
+        return super().validate(attrs)
 
 #-----Registration 
  
@@ -58,11 +80,22 @@ class LoginView(TokenObtainPairView):
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        if not serializer.is_valid():
+        try:
+            serializer.is_valid(raise_exception=True)
+        except AuthenticationFailed as exc:
+            error_detail = exc.detail
+            # exc.detail can be dict or string, handle both
+            if isinstance(error_detail, dict):
+                detail = error_detail.get("detail", "Authentication failed")
+                status_code = error_detail.get("status_code", 111)
+            else:
+                detail = str(error_detail)
+                status_code = 111
+
             return Response({
                 "data": None,
-                "message": "Invalid credentials",
-                "status_code": status.HTTP_401_UNAUTHORIZED
+                "detail": detail,
+                "status_code": status_code
             }, status=status.HTTP_401_UNAUTHORIZED)
 
         token = serializer.validated_data
@@ -71,6 +104,8 @@ class LoginView(TokenObtainPairView):
             "message": "Login successful",
             "status_code": status.HTTP_200_OK
         }, status=status.HTTP_200_OK)
+
+
         
 # User Logout View with Blacklist
 class LogoutView(APIView):

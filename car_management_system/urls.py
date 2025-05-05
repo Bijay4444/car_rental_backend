@@ -36,7 +36,8 @@ urlpatterns = [
     path('api/authentication/', include('dj_rest_auth.urls')),# dj-rest-auth endpoints(password reset, etc.)
     path('api/authentication/', include('django.contrib.auth.urls')),# provides standard auth URLs(password rest confirm, etc.)
     
-    # path('api/cars/', include('cars.urls')), 
+    # Cars App
+    path('api/cars/', include('cars.urls')), 
 ]
 
 # Serve static and media files in development

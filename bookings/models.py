@@ -237,13 +237,8 @@ class Payment(models.Model):
             models.Index(fields=['payment_method']),
         ]
         
- """ Booking Extension model for managing booking extensions.
-    This model allows for the extension of existing bookings, including
-    tracking the previous and new end dates, extension fees, and any
-    additional remarks or reasons for the extension.
-  """
-
 class BookingExtension(models.Model):
+
     booking = models.ForeignKey('Booking', on_delete=models.CASCADE, related_name='extensions')
     previous_end_date = models.DateField(help_text="The end date before extension")
     new_end_date = models.DateField(help_text="The new end date after extension")

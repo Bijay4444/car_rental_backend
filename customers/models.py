@@ -23,7 +23,7 @@ class Customer(models.Model):
     address = models.TextField()
     
     # Identification and Status
-    identification = models.ImageField(upload_to='customer_ids/', blank=True, null=True)
+    identification_image = models.ImageField(upload_to='customer_ids/', blank=True, null=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='Active', db_index=True)
     
     # For system integration (if a customer wants to create an account)

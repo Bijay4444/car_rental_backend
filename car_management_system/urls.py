@@ -38,6 +38,12 @@ urlpatterns = [
     
     # Cars App
     path('api/cars/', include('cars.urls')), 
+    
+    # Bookings App
+    path('api/bookings/', include('bookings.urls')),
+    
+    # Customers App
+    path('api/customers/', include('customers.urls')),
 ]
 
 # Serve static and media files in development

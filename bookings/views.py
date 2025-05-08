@@ -8,7 +8,8 @@ from django.db.models import Q
 from .models import Booking, Payment, BookingExtension
 from .serializers import (
     BookingSerializer, BookingListSerializer, PaymentSerializer,
-    BookingExtensionSerializer, BookingSwapSerializer, BookingExtendSerializer
+    BookingExtensionSerializer, BookingSwapSerializer, BookingExtendSerializer,
+    AccidentReportSerializer
 )
 from cars.models import Car
 
@@ -73,19 +74,21 @@ class BookingViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        booking = self.perform_create(serializer)
-        
-        # Update car availability and status
-        car = serializer.validated_data['car']
-        car.availability = 'Booked'
-        car.status = 'Booked'
-        car.save(update_fields=['availability', 'status'])
-        
+        booking = serializer.save(created_by=self.request.user)
+
+        # Only update car if it exists
+        if booking.car:
+            car = booking.car
+            car.availability = 'Booked'
+            car.status = 'Booked'
+            car.save(update_fields=['availability', 'status'])
+
         return Response({
             "data": serializer.data,
             "message": "Booking created successfully",
             "status_code": status.HTTP_201_CREATED
         }, status=status.HTTP_201_CREATED)
+
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
@@ -233,6 +236,86 @@ class BookingViewSet(viewsets.ModelViewSet):
             "status_code": status.HTTP_200_OK
         }, status=status.HTTP_200_OK)
 
+    # report_accident action
+    @action(detail=True, methods=['post'])
+    def report_accident(self, request, pk=None):
+        booking = self.get_object()
+        serializer = AccidentReportSerializer(data=request.data)
+        
+        if not serializer.is_valid():
+            return Response({
+                "data": None,
+                "message": serializer.errors,
+                "status_code": status.HTTP_400_BAD_REQUEST
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Update accident fields
+        booking.has_accident = serializer.validated_data['has_accident']
+        booking.accident_description = serializer.validated_data['accident_description']
+        booking.accident_date = serializer.validated_data['accident_date']
+        booking.accident_charges = serializer.validated_data['accident_charges']
+        booking.save()
+
+        # Handle car swap if requested
+        new_car_id = serializer.validated_data.get('new_car_id')
+        if new_car_id:
+            try:
+                new_car = Car.objects.get(
+                    id=new_car_id, 
+                    is_deleted=False, 
+                    availability='Available'
+                )
+                booking.swap_car(new_car, "Accident replacement")
+            except Car.DoesNotExist:
+                return Response({
+                    "data": None,
+                    "message": "Replacement car not found or not available",
+                    "status_code": status.HTTP_400_BAD_REQUEST
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({
+            "data": BookingSerializer(booking).data,
+            "message": "Accident reported successfully",
+            "status_code": status.HTTP_200_OK
+        }, status=status.HTTP_200_OK)
+        
+
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        booking = self.get_object()
+        if booking.booking_status == 'Cancelled':
+            return Response({
+                "data": None,
+                "message": "Booking is already cancelled",
+                "status_code": status.HTTP_400_BAD_REQUEST
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Optionally: Only allow cancel if not already returned or cancelled
+        if booking.booking_status in ['Returned', 'Cancelled']:
+            return Response({
+                "data": None,
+                "message": f"Cannot cancel a booking with status '{booking.booking_status}'",
+                "status_code": status.HTTP_400_BAD_REQUEST
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        booking.booking_status = 'Cancelled'
+        booking.save(update_fields=['booking_status'])
+
+        # If there is a car assigned and it's not returned, make it available again
+        if booking.car and not booking.car_returned:
+            car = booking.car
+            car.availability = 'Available'
+            car.status = 'Active'
+            car.save(update_fields=['availability', 'status'])
+
+        return Response({
+            "data": BookingSerializer(booking).data,
+            "message": "Booking cancelled successfully",
+            "status_code": status.HTTP_200_OK
+        }, status=status.HTTP_200_OK)
+
+
+
 class PaymentViewSet(viewsets.ModelViewSet):
     queryset = Payment.objects.all().select_related('booking', 'created_by')
     serializer_class = PaymentSerializer
@@ -297,3 +380,5 @@ class BookingExtensionViewSet(viewsets.ReadOnlyModelViewSet):
             "message": "Booking extension details fetched successfully",
             "status_code": status.HTTP_200_OK
         }, status=status.HTTP_200_OK)
+        
+    

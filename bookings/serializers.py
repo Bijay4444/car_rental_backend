@@ -24,11 +24,28 @@ class BookingSerializer(serializers.ModelSerializer):
     extensions = BookingExtensionSerializer(many=True, read_only=True)
     duration_days = serializers.IntegerField(source='get_duration_days', read_only=True)
     remaining_balance = serializers.SerializerMethodField()
+    has_accident = serializers.BooleanField(required=False)
+    accident_description = serializers.CharField(required=False, allow_blank=True)
+    accident_date = serializers.DateField(required=False)
+    accident_charges = serializers.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        required=False
+    )
     
     class Meta:
         model = Booking
         fields = '__all__'
         read_only_fields = ['booking_id', 'created_at', 'created_by', 'updated_at']
+        extra_kwargs = {
+            'car': {'required': False},
+            'pickup_time': {'required': False, 'allow_null': True},
+            'dropoff_time': {'required': False, 'allow_null': True},
+            'subtotal': {'required': False, 'allow_null': True},
+            'total_amount': {'required': False, 'allow_null': True},
+        }
+
+
     
     def get_remaining_balance(self, obj):
         return obj.total_amount - obj.paid_amount
@@ -46,22 +63,30 @@ class BookingSerializer(serializers.ModelSerializer):
         return data
     
     def create(self, validated_data):
-        # Calculate subtotal and total automatically
-        if 'start_date' in validated_data and 'end_date' in validated_data and 'car' in validated_data:
+        car = validated_data.get('car')
+        if car:
             delta = (validated_data['end_date'] - validated_data['start_date']).days
-            validated_data['subtotal'] = validated_data['car'].fee * delta
-            
-            # Calculate total with tax and discount
+            validated_data['subtotal'] = car.fee * delta
             tax = validated_data.get('tax', 0)
             discount = validated_data.get('discount', 0)
             validated_data['total_amount'] = validated_data['subtotal'] + tax - discount
+        else:
+            # Set defaults for reserved bookings
+            validated_data['subtotal'] = 0
+            validated_data['total_amount'] = 0
+            validated_data['booking_status'] = 'Reserved'
+            validated_data['pickup_time'] = validated_data.get('pickup_time', None)
+            validated_data['dropoff_time'] = validated_data.get('dropoff_time', None)
         
         return super().create(validated_data)
 
 class BookingListSerializer(serializers.ModelSerializer):
     customer_name = serializers.CharField(source='customer.name', read_only=True)
-    car_name = serializers.CharField(source='car.car_name', read_only=True)
     duration_days = serializers.IntegerField(source='get_duration_days', read_only=True)
+    car_name = serializers.SerializerMethodField(read_only=True)
+
+    def get_car_name(self, obj):
+        return obj.car.car_name if obj.car else None
     
     class Meta:
         model = Booking
@@ -86,3 +111,14 @@ class BookingExtendSerializer(serializers.Serializer):
             if value <= booking.end_date:
                 raise serializers.ValidationError("New end date must be after current end date")
         return value
+
+class AccidentReportSerializer(serializers.Serializer):
+    has_accident = serializers.BooleanField(required=True)
+    accident_description = serializers.CharField(required=True)
+    accident_date = serializers.DateField(required=True)
+    accident_charges = serializers.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        required=True
+    )
+    new_car_id = serializers.IntegerField(required=False)

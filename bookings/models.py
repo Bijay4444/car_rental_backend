@@ -23,13 +23,14 @@ class Booking(models.Model):
     
     # Relationships
     customer = models.ForeignKey('customers.Customer', on_delete=models.CASCADE, related_name='bookings')
-    car = models.ForeignKey('cars.Car', on_delete=models.CASCADE, related_name='bookings')
+    car = models.ForeignKey('cars.Car', on_delete=models.CASCADE, related_name='bookings', null=True, blank=True)
     
     # Dates and times
     start_date = models.DateField(db_index=True)
     end_date = models.DateField(db_index=True)
-    pickup_time = models.TimeField()
-    dropoff_time = models.TimeField()
+    pickup_time = models.TimeField(null=True, blank=True)
+    dropoff_time = models.TimeField(null=True, blank=True)  
+
     actual_return_date = models.DateField(null=True, blank=True, 
                                         help_text="The date when car was actually returned")
     
@@ -97,11 +98,16 @@ class Booking(models.Model):
         # Calculate subtotal and total
         if not self.id:  # For new bookings
             delta = (self.end_date - self.start_date).days
-            self.subtotal = self.car.fee * delta
-            self.total_amount = self.subtotal + self.tax - self.discount
+            if self.car:
+                self.subtotal = self.car.fee * delta
+                self.total_amount = self.subtotal + self.tax - self.discount
+            else:
+                self.subtotal = 0
+                self.total_amount = 0
         
         self.clean()
         super().save(*args, **kwargs)
+
         
     def extend(self, new_end_date, extension_fee=0, reason=None, remarks=None, user=None):
         """

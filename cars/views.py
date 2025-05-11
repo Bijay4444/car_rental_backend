@@ -6,6 +6,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .models import Car, CarDeleteReason
 from .serializers import CarSerializer, CarListSerializer, CarDeleteReasonSerializer
 from .filters import CarFilter
+from django.utils import timezone
 from bookings.models import Booking
 
 class CarViewSet(viewsets.ModelViewSet):

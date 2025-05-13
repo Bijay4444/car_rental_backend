@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'cars',
     'bookings',
     'customers',
+    'menu',
     
     
     #thrid party apps

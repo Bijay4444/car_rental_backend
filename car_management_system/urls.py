@@ -44,6 +44,9 @@ urlpatterns = [
     
     # Customers App
     path('api/customers/', include('customers.urls')),
+
+    # Menu App
+    path('api/menu/', include('menu.urls')),
 ]
 
 # Serve static and media files in development

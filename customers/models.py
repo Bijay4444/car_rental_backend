@@ -15,6 +15,7 @@ class Customer(models.Model):
     ]
     
     # Personal Information
+    profile_image = models.ImageField(upload_to='customer_profiles/', blank=True, null=True)
     name = models.CharField(max_length=100, db_index=True)
     email = models.EmailField(unique=True)
     phone_number = models.CharField(max_length=20)

@@ -40,3 +40,4 @@ class CarDeleteReasonAdmin(admin.ModelAdmin):
     list_filter = ('reason', 'deleted_at')
     search_fields = ('car__car_name', 'description')
     readonly_fields = ('deleted_at',)
+ 

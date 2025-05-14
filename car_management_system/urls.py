@@ -47,6 +47,9 @@ urlpatterns = [
 
     # Menu App
     path('api/menu/', include('menu.urls')),
+
+    # Dashboard App
+    path('api/dashboard/', include('dashboard.urls')),
 ]
 
 # Serve static and media files in development

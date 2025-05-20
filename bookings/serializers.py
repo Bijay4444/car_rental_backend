@@ -96,17 +96,31 @@ class BookingSerializer(serializers.ModelSerializer):
 
 class BookingListSerializer(serializers.ModelSerializer):
     customer_name = serializers.CharField(source='customer.name', read_only=True)
+    customer_address = serializers.CharField(source='customer.address', read_only=True)
     duration_days = serializers.IntegerField(source='get_duration_days', read_only=True)
     car_name = serializers.SerializerMethodField(read_only=True)
+    car_image = serializers.SerializerMethodField(read_only=True)
+    pickup_time = serializers.TimeField(read_only=True)
+    dropoff_time = serializers.TimeField(read_only=True)
 
     def get_car_name(self, obj):
         return obj.car.car_name if obj.car else None
     
+    def get_car_image(self, obj):  # <-- This method must exist!
+        if obj.car and obj.car.car_image:
+            request = self.context.get('request')
+            url = obj.car.car_image.url
+            if request is not None:
+                return request.build_absolute_uri(url)
+            return url
+        return None
+
     class Meta:
         model = Booking
-        fields = ['id', 'booking_id', 'customer_name', 'car_name', 'start_date', 
-                  'end_date', 'booking_status', 'payment_status', 'total_amount', 
-                  'paid_amount', 'duration_days']
+        fields = ['id', 'booking_id', 'customer_name', 'customer_address', 'car_name',
+                  'car_image', 'start_date', 'end_date', 'pickup_time',
+                   'dropoff_time', 'booking_status','payment_status', 
+                  'total_amount', 'paid_amount', 'duration_days']
 
 class BookingSwapSerializer(serializers.Serializer):
     new_car_id = serializers.IntegerField()

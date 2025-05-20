@@ -45,8 +45,6 @@ class BookingSerializer(serializers.ModelSerializer):
             'total_amount': {'required': False, 'allow_null': True},
         }
 
-
-    
     def get_remaining_balance(self, obj):
         return obj.total_amount - obj.paid_amount
     
@@ -60,6 +58,22 @@ class BookingSerializer(serializers.ModelSerializer):
             if data['start_date'] < timezone.now().date():
                 raise serializers.ValidationError("Start date cannot be in the past")
         
+        
+        # --- Double-booking validation ---
+        car = data.get('car') or getattr(self.instance, 'car', None)
+        start_date = data.get('start_date') or getattr(self.instance, 'start_date', None)
+        end_date = data.get('end_date') or getattr(self.instance, 'end_date', None)
+        booking_id = self.instance.id if self.instance else None
+
+        if car and start_date and end_date:
+            overlapping = Booking.objects.filter(
+                car=car,
+                start_date__lt=end_date,
+                end_date__gt=start_date,
+            ).exclude(id=booking_id)
+            
+            if overlapping.exists():
+                raise serializers.ValidationError("Car is already booked for the selected dates.")
         return data
     
     def create(self, validated_data):

@@ -169,3 +169,10 @@ merohealth-5e627-firebase-adminsdk-fbsvc-07570465c6.json
 
 # Ignore the redis file
 redis.conf 
+
+# Ignore my local files with sensitive data
+firebase-adminsdk.json
+firebase_key.json
+firebase-messaging-sw.js
+
+notifications/templates/

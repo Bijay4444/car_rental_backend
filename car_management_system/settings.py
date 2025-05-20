@@ -11,6 +11,10 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -44,6 +48,8 @@ INSTALLED_APPS = [
     'bookings',
     'customers',
     'menu',
+    'notifications',
+    'dashboard',
     
     
     #thrid party apps
@@ -163,9 +169,6 @@ SIMPLE_JWT = {
 }
 
 
-# Email settings
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-
 #Use JWT with dj-rest-auth
 REST_USE_JWT = True
 REST_FRAMEREST_FRAMEWORK = {
@@ -193,3 +196,28 @@ STATICFILES_DIRS = [
 
 # Optional: Where `collectstatic` will collect all static files for production
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Firebase settings 
+# Firebase credentials path
+# This should point to the JSON file downloaded from Firebase Console
+FIREBASE_CREDENTIAL_PATH = os.getenv('FIREBASE_CREDENTIAL_PATH')
+
+# Firebase settings
+# These values should be set in .env file
+# They are used to initialize Firebase in the web app and to send notifications
+FIREBASE_API_KEY = os.getenv("FIREBASE_API_KEY")
+FIREBASE_AUTH_DOMAIN = os.getenv("FIREBASE_AUTH_DOMAIN")
+FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID")
+FIREBASE_STORAGE_BUCKET = os.getenv("FIREBASE_STORAGE_BUCKET")
+FIREBASE_MESSAGING_SENDER_ID = os.getenv("FIREBASE_MESSAGING_SENDER_ID")
+FIREBASE_APP_ID = os.getenv("FIREBASE_APP_ID")
+
+# Email settings
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
+# This is the email address that will appear as the sender of the emails

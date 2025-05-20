@@ -2,6 +2,7 @@ from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework import serializers
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
 from django.db.models import Q
@@ -12,6 +13,7 @@ from .serializers import (
     AccidentReportSerializer
 )
 from cars.models import Car
+from core.utils import extract_error_message
 
 class BookingViewSet(viewsets.ModelViewSet):
     queryset = Booking.objects.all().select_related('customer', 'car', 'original_car', 'created_by')
@@ -73,7 +75,14 @@ class BookingViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except serializers.ValidationError as exc:
+            return Response({
+                "data": None,
+                "message": extract_error_message(exc.detail),
+                "status_code": 409
+            }, status=409)
         booking = serializer.save(created_by=self.request.user)
 
         # Only update car if it exists
@@ -209,6 +218,17 @@ class BookingViewSet(viewsets.ModelViewSet):
             "message": "Active bookings fetched successfully",
             "status_code": status.HTTP_200_OK
         }, status=status.HTTP_200_OK)
+        
+    @action(detail=False, methods=['get'], url_path='reserved')
+    def reserved(self, request):
+        # Filter for reserved bookings
+        bookings = self.get_queryset().filter(booking_status='Reserved')
+        serializer = self.get_serializer(bookings, many=True)
+        return Response({
+            "data": serializer.data,
+            "message": "Reserved bookings fetched successfully",
+            "status_code": status.HTTP_200_OK
+        })
     
     @action(detail=False, methods=['get'])
     def today_pickups(self, request):

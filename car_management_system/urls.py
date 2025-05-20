@@ -16,6 +16,9 @@ Including another URLconf
 """
 from django.conf import settings
 from django.conf.urls.static import static
+from django.views.generic import TemplateView
+from django.views.static import serve
+import os
 
 from django.contrib import admin
 from django.urls import path, include
@@ -50,6 +53,9 @@ urlpatterns = [
 
     # Dashboard App
     path('api/dashboard/', include('dashboard.urls')),
+    
+    # Notifications App
+    path('api/notifications/', include('notifications.urls')),    
 ]
 
 # Serve static and media files in development
@@ -57,3 +63,19 @@ urlpatterns = [
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+# Serve the Firebase messaging service worker file
+# This is only for development purposes. In production, we will use a proper web server to serve static files.
+from django.views.static import serve
+import os
+
+urlpatterns += [
+    path(
+        'firebase-messaging-sw.js',
+        serve,
+        {
+            'document_root': os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            'path': 'firebase-messaging-sw.js'
+        }
+    ),
+]

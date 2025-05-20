@@ -33,7 +33,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             # Email not found - raise custom error with code 222
             raise AuthenticationFailed({
                 "detail": "No active account found with the given credentials",
-                "status_code": 222
+                "status_code": int(222)
             })
 
         # Email exists, check password
@@ -42,7 +42,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             # Password incorrect - raise custom error with code 111
             raise AuthenticationFailed({
                 "detail": "Invalid password",
-                "status_code": 111
+                "status_code": int(111)
             })
 
         # If authentication successful, proceed with normal flow
@@ -87,7 +87,7 @@ class LoginView(TokenObtainPairView):
             # exc.detail can be dict or string, handle both
             if isinstance(error_detail, dict):
                 detail = error_detail.get("detail", "Authentication failed")
-                status_code = error_detail.get("status_code", 111)
+                status_code = int(error_detail.get("status_code", 111))
             else:
                 detail = str(error_detail)
                 status_code = 111

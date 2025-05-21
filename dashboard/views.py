@@ -8,9 +8,33 @@ from customers.models import Customer
 from bookings.models import Booking
 
 class DashboardView(APIView):
+    """
+    API view for retrieving dashboard analytics and summary data.
+
+    Provides statistics for cars, customers, bookings, pickups, returns, and trends over time.
+    All statistics are calculated for the current day, last 7 days, and previous periods for comparison.
+
+    Returns:
+        - Total cars and percent change in last 7 days.
+        - Total customers and percent change in last 7 days.
+        - Today's pickups and returns with percent change from last week.
+        - Ongoing bookings and percent change from last week.
+        - Booking calendar: bookings per day in the current month.
+        - Booking summary: booked vs canceled bookings for the last 7 days.
+    """
     permission_classes = [IsAuthenticated]
 
     def safe_percent_change(self, current, previous):
+        """
+        Safely calculate percent change between two values.
+
+        Args:
+            current (int): Current period value.
+            previous (int): Previous period value.
+
+        Returns:
+            float: Percent change, or 0/100 for edge cases.
+        """
         if previous == 0:
             if current == 0:
                 return 0.0
@@ -19,6 +43,12 @@ class DashboardView(APIView):
         return round(((current - previous) / previous) * 100, 2)
 
     def get(self, request):
+        """
+        Retrieve dashboard analytics and summary data.
+
+        Returns:
+            Response: API response with dashboard statistics and trends.
+        """
         today = timezone.localdate()
         week_ago = today - timedelta(days=7)
         two_weeks_ago = today - timedelta(days=14)

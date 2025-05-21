@@ -3,6 +3,29 @@ from django.conf import settings
 from django.utils import timezone
 
 class Customer(models.Model):
+    """
+    Model representing a customer in the car rental system.
+
+    Stores personal information, identification, status, analytics, and audit fields.
+
+    Attributes:
+        profile_image (ImageField): Optional profile image.
+        name (str): Customer's full name.
+        email (str): Unique email address.
+        phone_number (str): Contact phone number.
+        gender (str): Gender of the customer.
+        date_of_birth (date): Date of birth.
+        address (str): Address.
+        identification_image (ImageField): Optional ID image.
+        status (str): Account status (Active, Blocked, Inactive).
+        user (User): Linked user account (optional).
+        total_bookings (int): Number of bookings.
+        total_spent (Decimal): Total amount spent.
+        last_booking_date (date): Date of last booking.
+        created_at (datetime): Creation timestamp.
+        updated_at (datetime): Last update timestamp.
+        created_by (User): User who created the record.
+    """
     STATUS_CHOICES = [
         ('Active', 'Active'),
         ('Blocked', 'Blocked'),
@@ -43,7 +66,11 @@ class Customer(models.Model):
                                  null=True, related_name='customers_created')
     
     def update_booking_stats(self):
-        """Update customer booking statistics"""
+        """
+        Update customer booking statistics.
+
+        Calculates total bookings, total spent, and last booking date.
+        """
         from bookings.models import Booking
         bookings = Booking.objects.filter(customer=self)
         
@@ -57,6 +84,12 @@ class Customer(models.Model):
         self.save(update_fields=['total_bookings', 'total_spent', 'last_booking_date'])
     
     def __str__(self):
+        """
+        Return the string representation of the customer.
+
+        Returns:
+            str: Customer's name.
+        """
         return self.name
     
     class Meta:

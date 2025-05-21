@@ -8,6 +8,11 @@ from payments.models import Payment
 # for booking notification
 @receiver(post_save, sender=Booking)
 def notify_on_booking(sender, instance, created, **kwargs):
+    """
+    Signal handler to send notifications on booking creation or status change.
+
+    Notifies the user when a booking is confirmed, returned, or overdue, based on their preferences.
+    """
     user = instance.customer.user
     try:
         pref = user.notification_preference
@@ -45,6 +50,11 @@ def notify_on_booking(sender, instance, created, **kwargs):
 #for payment notification
 @receiver(post_save, sender=Payment)
 def notify_on_payment(sender, instance, created, **kwargs):
+    """
+    Signal handler to send notifications on payment creation.
+
+    Notifies the user when a payment is received, based on their preferences.
+    """
     user = instance.booking.customer.user  # adjust as per your model
     try:
         pref = user.notification_preference

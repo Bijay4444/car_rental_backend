@@ -4,6 +4,37 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 
 class Car(models.Model):
+    """
+    Model representing a car in the rental system.
+
+    Stores car details, specifications, insurance info, status, and audit fields.
+    Supports soft deletion with reason tracking.
+
+    Attributes:
+        car_image (ImageField): Optional image of the car.
+        car_name (str): Name of the car.
+        fee (Decimal): Rental fee per day.
+        tracker_expiry_date (date): Expiry date of the car's tracker.
+        color (str): Car color.
+        seats (int): Number of seats.
+        mileage (str): Mileage information.
+        type (str): Type of car (SUV, Sedan, etc.).
+        gearbox (str): Gearbox type (Automatic/Manual).
+        max_speed (str): Maximum speed.
+        collision_damage_waiver (bool): Insurance option.
+        third_party_liability_insurance (bool): Insurance option.
+        optional_insurance_add_ons (bool): Insurance option.
+        insurance_expiry_date (date): Insurance expiry date.
+        status (str): Current status (Active, Booked, etc.).
+        availability (str): Availability status.
+        created_at (datetime): Creation timestamp.
+        updated_at (datetime): Last update timestamp.
+        created_by (User): User who created the record.
+        updated_by (User): User who last updated the record.
+        is_deleted (bool): Soft delete flag.
+        deleted_at (datetime): Deletion timestamp.
+        deleted_by (User): User who deleted the record.
+    """
     CAR_TYPE_CHOICES = [
         ('SUV', 'SUV'),
         ('Sedan', 'Sedan'),
@@ -62,6 +93,12 @@ class Car(models.Model):
     deleted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='cars_deleted')
 
     def clean(self):
+        """
+        Validate tracker and insurance expiry dates.
+
+        Raises:
+            ValidationError: If dates are in the past.
+        """
         if self.tracker_expiry_date and self.tracker_expiry_date < timezone.now().date():
             raise ValidationError('Tracker expiry date must be in the future')
             
@@ -69,7 +106,17 @@ class Car(models.Model):
             raise ValidationError('Insurance expiry date must be in the future')
     
     def soft_delete(self, user=None, reason=None, description=None):
-        """Soft delete a car with reason tracking"""
+        """
+        Soft delete a car and record the reason.
+
+        Args:
+            user (User, optional): User performing the deletion.
+            reason (str, optional): Reason for deletion.
+            description (str, optional): Additional description.
+
+        Returns:
+            bool: True if deletion was successful.
+        """
         self.is_deleted = True
         self.deleted_at = timezone.now()
         self.deleted_by = user
@@ -86,6 +133,12 @@ class Car(models.Model):
         return True
     
     def __str__(self):
+        """
+        Return the string representation of the car.
+
+        Returns:
+            str: Car name.
+        """
         return self.car_name
 
     class Meta:
@@ -98,6 +151,17 @@ class Car(models.Model):
 
 
 class CarDeleteReason(models.Model):
+    """
+    Model to track reasons for car deletion.
+
+    Attributes:
+        car (Car): The car that was deleted.
+        reason (str): Reason for deletion.
+        description (str): Additional description.
+        deleted_at (datetime): Deletion timestamp.
+        deleted_by (User): User who deleted the car.
+    """
+    
     REASON_CHOICES = [
         ('Accident', 'Accident'),
         ('Maintenance', 'Maintenance'),
@@ -112,6 +176,12 @@ class CarDeleteReason(models.Model):
     deleted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     
     def __str__(self):
+        """
+        Return a string describing the deletion reason.
+
+        Returns:
+            str: Description of the deletion reason.
+        """
         return f"{self.car.car_name} deleted due to {self.get_reason_display()}"
     
     class Meta:

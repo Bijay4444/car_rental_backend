@@ -1,0 +1,16 @@
+site_name: Car Rental Documentation
+
+plugins:
+  - search
+  - mkdocstrings
+
+nav:
+  - Home: index.md
+  - API Reference:
+      - Authentication: api/authentication.md
+      - Bookings: api/bookings.md
+      - Cars: api/cars.md
+      - Customers: api/customers.md
+      - Menu: api/menu.md
+      - Notifications: api/notifications.md
+      - Dashboard: api/dashboard.md

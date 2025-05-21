@@ -5,6 +5,44 @@ from django.conf import settings
 import uuid
 
 class Booking(models.Model):
+    """
+    Model representing a car booking.
+
+    Stores booking details, customer, car, dates, payment, accident info, swap history, and audit fields.
+
+    Attributes:
+        booking_id (str): Unique booking identifier.
+        customer (Customer): The customer who made the booking.
+        car (Car): The car assigned to the booking.
+        start_date (date): Booking start date.
+        end_date (date): Booking end date.
+        pickup_time (time): Scheduled pickup time.
+        dropoff_time (time): Scheduled dropoff time.
+        actual_return_date (date): Actual return date.
+        booking_status (str): Status (Active, Returned, Cancelled, Overdue).
+        car_returned (bool): Whether the car has been returned.
+        payment_status (str): Payment status (Paid, Partial, Unpaid).
+        subtotal (Decimal): Base fee * number of days.
+        tax (Decimal): Tax amount.
+        discount (Decimal): Discount amount.
+        extension_charges (Decimal): Additional charges for extensions.
+        total_amount (Decimal): Total amount due.
+        paid_amount (Decimal): Amount paid.
+        payment_date (date): Date of payment.
+        payment_method (str): Payment method.
+        has_accident (bool): Whether an accident occurred.
+        accident_description (str): Description of accident.
+        accident_date (date): Date of accident.
+        accident_charges (Decimal): Charges due to accident.
+        original_car (Car): Original car if swapped.
+        has_been_swapped (bool): Whether car was swapped.
+        swap_date (date): Date of car swap.
+        swap_reason (str): Reason for car swap.
+        remarks (str): Additional remarks.
+        created_at (datetime): Creation timestamp.
+        updated_at (datetime): Last update timestamp.
+        created_by (User): User who created the booking.
+    """
     PAYMENT_STATUS_CHOICES = [
         ('Paid', 'Paid'),
         ('Partial', 'Partial'),
@@ -74,6 +112,12 @@ class Booking(models.Model):
                                  null=True, related_name='bookings_created')
     
     def clean(self):
+        """
+        Validate booking dates and car availability.
+
+        Raises:
+            ValidationError: If dates are invalid or car is double-booked.
+        """
         if self.start_date and self.end_date and self.start_date > self.end_date:
             raise ValidationError('Start date must be before end date')
             
@@ -90,6 +134,13 @@ class Booking(models.Model):
                 raise ValidationError('This car is already booked for the selected dates')
     
     def save(self, *args, **kwargs):
+        """
+        Save the booking instance.
+
+        - Generates a unique booking ID if not set.
+        - Calculates subtotal and total amount.
+        - Validates booking before saving.
+        """
         # Generate booking ID on creation
         if not self.booking_id:
             unique_id = str(uuid.uuid4()).split('-')[0]
@@ -112,8 +163,15 @@ class Booking(models.Model):
     def extend(self, new_end_date, extension_fee=0, reason=None, remarks=None, user=None):
         """
         Extend this booking to a new end date.
-        - Creates a BookingExtension record.
-        - Updates the booking's end_date and extension_charges.
+
+        Creates a BookingExtension record and updates booking's end_date and charges.
+
+        Args:
+            new_end_date (date): The new end date.
+            extension_fee (Decimal): Additional fee for extension.
+            reason (str, optional): Reason for extension.
+            remarks (str, optional): Additional remarks.
+            user (User, optional): User performing the extension.
         """
         if new_end_date <= self.end_date:
             raise ValidationError("New end date must be after current end date.")
@@ -133,7 +191,13 @@ class Booking(models.Model):
         self.save(update_fields=['extension_charges', 'end_date', 'total_amount'])
             
     def swap_car(self, new_car, reason):
-        """Swap the car assigned to this booking"""
+        """
+        Swap the car assigned to this booking.
+
+        Args:
+            new_car (Car): The replacement car.
+            reason (str): Reason for swapping.
+        """
         if self.has_been_swapped:
             old_car = self.original_car
         else:
@@ -156,11 +220,22 @@ class Booking(models.Model):
         new_car.save()
     
     def get_duration_days(self):
-        """Calculate the duration of booking in days."""
+        """
+        Calculate the duration of booking in days.
+
+        Returns:
+            int: Number of days.
+        """
         return (self.end_date - self.start_date).days
 
     
     def __str__(self):
+        """
+        Return the string representation of the booking.
+
+        Returns:
+            str: Booking summary.
+        """
         return f"Booking {self.booking_id} - {self.customer.name} - {self.car.car_name}"
     
     class Meta:
@@ -179,6 +254,23 @@ class Booking(models.Model):
 
 
 class Payment(models.Model):
+    """
+    Model representing a payment for a booking.
+
+    Attributes:
+        booking (Booking): The related booking.
+        amount (Decimal): Payment amount.
+        payment_date (date): Date of payment.
+        payment_method (str): Payment method.
+        is_successful (bool): Whether payment was successful.
+        transaction_id (str): Transaction identifier.
+        notes (str): Additional notes.
+        remarks (str): Additional remarks.
+        payment_method_details (str): Details about the payment method.
+        receipt_image (ImageField): Optional receipt image.
+        created_at (datetime): Creation timestamp.
+        created_by (User): User who recorded the payment.
+    """
     PAYMENT_METHOD_CHOICES = [
         ('Cash', 'Cash'),
         ('Credit', 'Credit Card'),
@@ -210,6 +302,11 @@ class Payment(models.Model):
                                  null=True, related_name='payments_recorded')
     
     def save(self, *args, **kwargs):
+        """
+        Save the payment and update booking payment status.
+
+        Updates paid amount, payment status, and payment date on the booking.
+        """
         super().save(*args, **kwargs)
         
         # Update booking payment status
@@ -234,6 +331,12 @@ class Payment(models.Model):
             booking.save(update_fields=['payment_date'])
     
     def __str__(self):
+        """
+        Return the string representation of the payment.
+
+        Returns:
+            str: Payment summary.
+        """
         return f"Payment of ${self.amount} for {self.booking.booking_id}"
     
     class Meta:
@@ -244,7 +347,19 @@ class Payment(models.Model):
         ]
         
 class BookingExtension(models.Model):
+    """
+    Model representing an extension to a booking.
 
+    Attributes:
+        booking (Booking): The related booking.
+        previous_end_date (date): End date before extension.
+        new_end_date (date): New end date after extension.
+        extension_fee (Decimal): Fee for extension.
+        reason (str): Reason for extension.
+        remarks (str): Additional remarks.
+        created_at (datetime): Creation timestamp.
+        created_by (User): User who created the extension.
+    """
     booking = models.ForeignKey('Booking', on_delete=models.CASCADE, related_name='extensions')
     previous_end_date = models.DateField(help_text="The end date before extension")
     new_end_date = models.DateField(help_text="The new end date after extension")
@@ -257,10 +372,22 @@ class BookingExtension(models.Model):
     )
 
     def clean(self):
+        """
+        Validate that the new end date is after the previous end date.
+
+        Raises:
+            ValidationError: If new end date is not after previous.
+        """
         if self.new_end_date <= self.previous_end_date:
             raise ValidationError("New end date must be after previous end date.")
 
     def __str__(self):
+        """
+        Return the string representation of the booking extension.
+
+        Returns:
+            str: Extension summary.
+        """
         return f"Extension for {self.booking.booking_id}: {self.previous_end_date} → {self.new_end_date}"
 
     class Meta:

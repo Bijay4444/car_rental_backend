@@ -2,13 +2,21 @@ from rest_framework import serializers
 from .models import Customer
 
 class CustomerListSerializer(serializers.ModelSerializer):
-    """Simplified serializer for list views"""
+    """
+    Simplified serializer for customer list views.
+
+    Returns only key fields for displaying customers in lists.
+    """
     class Meta:
         model = Customer
         fields = ['id', 'name', 'status', 'phone_number', 'email']
 
 class CustomerSerializer(serializers.ModelSerializer):
-    """Full customer serializer with all details"""
+    """
+    Full customer serializer with all details.
+
+    Includes fields for images, analytics, and audit information.
+    """
     identification_image_url = serializers.SerializerMethodField()
     profile_image_url = serializers.SerializerMethodField()
     
@@ -26,6 +34,15 @@ class CustomerSerializer(serializers.ModelSerializer):
         ]
     
     def get_identification_image_url(self, obj):
+        """
+        Get the absolute URL for the identification image.
+
+        Args:
+            obj (Customer): The customer instance.
+
+        Returns:
+            str or None: Absolute URL or None if not available.
+        """
         if obj.identification_image:
             request = self.context.get('request')
             if request:
@@ -33,6 +50,15 @@ class CustomerSerializer(serializers.ModelSerializer):
         return None
 
     def get_profile_image_url(self, obj):
+        """
+        Get the absolute URL for the profile image.
+
+        Args:
+            obj (Customer): The customer instance.
+
+        Returns:
+            str or None: Absolute URL or None if not available.
+        """
         if obj.profile_image:
             request = self.context.get('request')
             if request:

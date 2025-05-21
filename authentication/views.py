@@ -21,7 +21,12 @@ User = get_user_model()
 
 # Custom Token Serializer 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """
+    Custom TokenObtainPairSerializer to handle email and password authentication.
 
+    Validates user credentials using email and password, and returns JWT tokens.
+    Raises custom error codes for invalid email or password.
+    """
     def validate(self, attrs):
         email = attrs.get("email")
         password = attrs.get("password")
@@ -51,11 +56,22 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 #-----Registration 
  
 class RegisterView(generics.CreateAPIView):
+    """
+    API view for user registration.
+
+    Allows new users to register by providing email, full name, password, and optional user image and device info.
+    """
     queryset = CustomUser.objects.all()
     permission_classes = [AllowAny]
     serializer_class = RegisterSerializer
 
     def create(self, request, *args, **kwargs):
+        """
+        Handle user registration request.
+
+        Returns:
+            Response: API response with user data and status message.
+        """
         serializer = self.get_serializer(data=request.data)
         if not serializer.is_valid():
             return Response({
@@ -76,9 +92,21 @@ class RegisterView(generics.CreateAPIView):
 
 #------Login
 class LoginView(TokenObtainPairView):
+    """
+    API view for user login.
+
+    Authenticates user using email and password, returns JWT tokens on success.
+    Handles custom error codes for invalid credentials.
+    """
     serializer_class = CustomTokenObtainPairSerializer
 
     def post(self, request, *args, **kwargs):
+        """
+        Handle user login request.
+
+        Returns:
+            Response: API response with JWT tokens and status message.
+        """
         serializer = self.get_serializer(data=request.data)
         try:
             serializer.is_valid(raise_exception=True)
@@ -109,9 +137,20 @@ class LoginView(TokenObtainPairView):
         
 # User Logout View with Blacklist
 class LogoutView(APIView):
+    """
+    API view for user logout and token blacklisting.
+
+    Blacklists the provided refresh token to prevent further use.
+    """
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
+        """
+        Handle user logout request.
+
+        Returns:
+            Response: API response with logout status.
+        """
         refresh_token = request.data.get("refresh")
         if not refresh_token:
             return Response({
@@ -136,15 +175,32 @@ class LogoutView(APIView):
 
 #------Biometric Toggle           
 class BiometricToggleView(generics.UpdateAPIView):
+    """
+    API view to enable or disable biometric (fingerprint) authentication for the user.
+
+    Allows authenticated users to update their biometric authentication settings and device info.
+    """
     permission_classes = [IsAuthenticated]
     serializer_class = BiometricToggleSerializer
 
     def get_object(self):
+        """
+        Return the currently authenticated user.
+
+        Returns:
+            CustomUser: The authenticated user instance.
+        """
         # Return the currently authenticated user
         return self.request.user
 
     def update(self, request, *args, **kwargs):
-        partial = kwargs.pop('partial', True)  # Allow partial updates
+        """
+        Handle biometric toggle update request.
+
+        Returns:
+            Response: API response with updated settings and status message.
+        """
+        partial = kwargs.pop('partial', True)  
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
@@ -158,10 +214,21 @@ class BiometricToggleView(generics.UpdateAPIView):
 
 #-----Change Password
 class ChangePasswordView(generics.GenericAPIView):
+    """
+    API view to handle password change for authenticated users.
+
+    Validates old password and ensures new passwords match and meet minimum length requirements.
+    """
     serializer_class = ChangePasswordSerializer
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        """
+        Handle password change request.
+
+        Returns:
+            Response: API response with status message.
+        """
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             old_password = serializer.validated_data['old_password']
@@ -198,8 +265,19 @@ class ChangePasswordView(generics.GenericAPIView):
 
 #-----User Profile
 class UserProfileView(generics.RetrieveUpdateAPIView):
+    """
+    API view to retrieve and update user profile information.
+
+    Allows authenticated users to view and update their profile details, including user image.
+    """
     serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
+        """
+        Return the currently authenticated user.
+
+        Returns:
+            CustomUser: The authenticated user instance.
+        """
         return self.request.user

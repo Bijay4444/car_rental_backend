@@ -7,6 +7,25 @@ from .models import Customer
 from .serializers import CustomerSerializer, CustomerListSerializer
 
 class CustomerViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing customers in the car rental system.
+
+    Provides CRUD operations, filtering, searching, ordering, and custom actions for blocking/unblocking,
+    listing active/blocked customers, and retrieving booking history.
+
+    Actions:
+        - list: List all customers.
+        - retrieve: Get details of a customer.
+        - create: Add a new customer.
+        - update: Update customer details.
+        - destroy: Delete a customer.
+        - block: Block a customer.
+        - unblock: Unblock a customer.
+        - active: List all active customers.
+        - blocked: List all blocked customers.
+        - bookings: List bookings for a customer.
+        - history: Get customer booking history and stats.
+    """
     queryset = Customer.objects.all()
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status']
@@ -15,19 +34,43 @@ class CustomerViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     
     def get_serializer_class(self):
+        """
+        Return the serializer class to use for the request.
+
+        Returns:
+            Serializer: The serializer class.
+        """
         if self.action == 'list':
             return CustomerListSerializer
         return CustomerSerializer
     
     def get_serializer_context(self):
+        """
+        Add request context for serializer (for absolute image URLs).
+
+        Returns:
+            dict: Serializer context.
+        """
         context = super().get_serializer_context()
         context['request'] = self.request
         return context
     
     def perform_create(self, serializer):
+        """
+        Save a new customer instance with creator set to the current user.
+
+        Args:
+            serializer (Serializer): The serializer instance.
+        """
         serializer.save(created_by=self.request.user)
     
     def list(self, request, *args, **kwargs):
+        """
+        List all customers.
+
+        Returns:
+            Response: API response with customer list.
+        """
         queryset = self.filter_queryset(self.get_queryset())
         serializer = self.get_serializer(queryset, many=True)
         return Response({
@@ -37,6 +80,12 @@ class CustomerViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_200_OK)
 
     def retrieve(self, request, *args, **kwargs):
+        """
+        Retrieve details of a specific customer.
+
+        Returns:
+            Response: API response with customer details.
+        """
         instance = self.get_object()
         serializer = self.get_serializer(instance)
         return Response({
@@ -46,6 +95,12 @@ class CustomerViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_200_OK)
 
     def create(self, request, *args, **kwargs):
+        """
+        Create a new customer.
+
+        Returns:
+            Response: API response with created customer data.
+        """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -56,6 +111,12 @@ class CustomerViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
+        """
+        Update an existing customer.
+
+        Returns:
+            Response: API response with updated customer data.
+        """
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
@@ -68,6 +129,12 @@ class CustomerViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_200_OK)
 
     def destroy(self, request, *args, **kwargs):
+        """
+        Delete a customer.
+
+        Returns:
+            Response: API response with deletion status.
+        """
         instance = self.get_object()
         self.perform_destroy(instance)
         return Response({
@@ -78,6 +145,14 @@ class CustomerViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'])
     def block(self, request, pk=None):
+        """
+        Block a customer.
+
+        Sets the customer's status to 'Blocked'.
+
+        Returns:
+            Response: API response with updated customer data.
+        """
         customer = self.get_object()
         customer.status = 'Blocked'
         customer.save()
@@ -90,6 +165,14 @@ class CustomerViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'])
     def unblock(self, request, pk=None):
+        """
+        Unblock a customer.
+
+        Sets the customer's status to 'Active'.
+
+        Returns:
+            Response: API response with updated customer data.
+        """
         customer = self.get_object()
         customer.status = 'Active'
         customer.save()
@@ -102,6 +185,12 @@ class CustomerViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def active(self, request):
+        """
+        List all active customers.
+
+        Returns:
+            Response: API response with active customers.
+        """
         queryset = self.filter_queryset(
             self.get_queryset().filter(status='Active')
         )
@@ -114,6 +203,12 @@ class CustomerViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def blocked(self, request):
+        """
+        List all blocked customers.
+
+        Returns:
+            Response: API response with blocked customers.
+        """
         queryset = self.filter_queryset(
             self.get_queryset().filter(status='Blocked')
         )
@@ -126,6 +221,12 @@ class CustomerViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['get'])
     def bookings(self, request, pk=None):
+        """
+        List all bookings for a customer.
+
+        Returns:
+            Response: API response with bookings for the customer.
+        """
         from bookings.models import Booking
         from bookings.serializers import BookingListSerializer
         
@@ -141,7 +242,12 @@ class CustomerViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['get'])
     def history(self, request, pk=None):
-        """Get customer booking history and stats"""
+        """
+        Get customer booking history and statistics.
+
+        Returns:
+            Response: API response with customer details, recent bookings, and stats.
+        """
         customer = self.get_object()
         customer.update_booking_stats()  # Update stats before returning
         

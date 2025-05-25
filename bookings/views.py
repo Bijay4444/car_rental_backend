@@ -77,7 +77,8 @@ class BookingViewSet(viewsets.ModelViewSet):
         queryset = super().get_queryset()
         
         # Exclude reserved bookings by default
-        queryset = queryset.exclude(booking_status='Reserved')
+        if getattr(self, 'action', None) == 'list':
+            queryset = queryset.exclude(booking_status='Reserved')
         
         # Filter by date range if provided
         start_date = self.request.query_params.get('start_date')

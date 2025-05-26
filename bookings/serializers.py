@@ -36,6 +36,7 @@ class BookingSerializer(serializers.ModelSerializer):
     car_details = CarListSerializer(source='car', read_only=True)
     original_car_details = CarListSerializer(source='original_car', read_only=True)
     payments = PaymentSerializer(many=True, read_only=True)
+    overdue_fee = serializers.SerializerMethodField()
     extensions = BookingExtensionSerializer(many=True, read_only=True)
     duration_days = serializers.IntegerField(source='get_duration_days', read_only=True)
     remaining_balance = serializers.SerializerMethodField()
@@ -51,7 +52,7 @@ class BookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Booking
         fields = '__all__'
-        read_only_fields = ['booking_id', 'created_at', 'created_by', 'updated_at']
+        read_only_fields = ['booking_id', 'created_at', 'created_by', 'updated_at', 'overdue_fee']
         extra_kwargs = {
             'car': {'required': False},
             'pickup_time': {'required': False, 'allow_null': True},
@@ -67,7 +68,22 @@ class BookingSerializer(serializers.ModelSerializer):
         Returns:
             Decimal: Remaining amount to be paid.
         """
-        return obj.total_amount - obj.paid_amount
+        return obj.total_amount + obj.overdue_fee - obj.paid_amount
+    
+    def get_overdue_fee(self, obj):
+        """ 
+        Calculate overdue fee if applicable.
+        If the booking end date has passed and the car has not been returned,
+        calculate the fee based on the number of overdue days and the car's fee.
+        Returns:
+            Decimal: Overdue fee amount, or 0 if not overdue.
+        """
+        today = timezone.now().date()
+        if obj.end_date and today > obj.end_date and not obj.car_returned:
+            days_overdue = (today - obj.end_date).days
+            if obj.car and obj.car.fee:
+                return obj.car.fee * days_overdue
+        return 0
     
     def validate(self, data):
         """
@@ -140,6 +156,7 @@ class BookingListSerializer(serializers.ModelSerializer):
     pickup_time = serializers.TimeField(read_only=True)
     dropoff_time = serializers.TimeField(read_only=True)
     booking_status = serializers.SerializerMethodField()
+    overdue_fee = serializers.SerializerMethodField()
 
     def get_car_name(self, obj):
         """
@@ -186,13 +203,21 @@ class BookingListSerializer(serializers.ModelSerializer):
             return "Overdue"
         # Fallback: show DB value
         return obj.booking_status
+    
+    def get_overdue_fee(self, obj):
+        today = timezone.now().date()
+        if obj.end_date and today > obj.end_date and not obj.car_returned:
+            days_overdue = (today - obj.end_date).days
+            if obj.car and obj.car.fee:
+                return obj.car.fee * days_overdue
+        return 0
 
     class Meta:
         model = Booking
         fields = [
             'id', 'booking_id', 'customer_name', 'customer_address', 'car_name',
             'car_image', 'start_date', 'end_date', 'pickup_time', 'dropoff_time',
-            'booking_status', 'payment_status', 'total_amount', 'paid_amount', 'duration_days'
+            'booking_status', 'payment_status', 'total_amount', 'paid_amount', 'duration_days', 'overdue_fee'
         ]
 
 class BookingSwapSerializer(serializers.Serializer):

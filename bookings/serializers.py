@@ -139,6 +139,7 @@ class BookingListSerializer(serializers.ModelSerializer):
     car_image = serializers.SerializerMethodField(read_only=True)
     pickup_time = serializers.TimeField(read_only=True)
     dropoff_time = serializers.TimeField(read_only=True)
+    booking_status = serializers.SerializerMethodField()
 
     def get_car_name(self, obj):
         """
@@ -163,13 +164,36 @@ class BookingListSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(url)
             return url
         return None
+    
+    def get_booking_status(self, obj):
+        today = timezone.now().date()
+        # Cancelled or Returned: always show DB value
+        if obj.booking_status == 'Cancelled':
+            return 'Cancelled'
+        if obj.booking_status == 'Returned':
+            return 'Returned'
+        # Reserved: no car assigned
+        if obj.car is None:
+            return "Reserved"
+        # Upcoming: car assigned, not started, not returned
+        if not getattr(obj, 'car_returned', False) and obj.start_date > today:
+            return "Upcoming"
+        # Active: car assigned, today within booking, not returned
+        if not getattr(obj, 'car_returned', False) and obj.start_date <= today <= obj.end_date:
+            return "Active"
+        # Overdue: car assigned, end date passed, not returned
+        if not getattr(obj, 'car_returned', False) and obj.end_date < today:
+            return "Overdue"
+        # Fallback: show DB value
+        return obj.booking_status
 
     class Meta:
         model = Booking
-        fields = ['id', 'booking_id', 'customer_name', 'customer_address', 'car_name',
-                  'car_image', 'start_date', 'end_date', 'pickup_time',
-                   'dropoff_time', 'booking_status','payment_status', 
-                  'total_amount', 'paid_amount', 'duration_days']
+        fields = [
+            'id', 'booking_id', 'customer_name', 'customer_address', 'car_name',
+            'car_image', 'start_date', 'end_date', 'pickup_time', 'dropoff_time',
+            'booking_status', 'payment_status', 'total_amount', 'paid_amount', 'duration_days'
+        ]
 
 class BookingSwapSerializer(serializers.Serializer):
     """

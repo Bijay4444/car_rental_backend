@@ -78,8 +78,8 @@ class BookingViewSet(viewsets.ModelViewSet):
         
         # Exclude reserved bookings by default
         if getattr(self, 'action', None) == 'list':
-            queryset = queryset.exclude(booking_status='Reserved')
-        
+            queryset = queryset.exclude(car__isnull=True)
+                
         # Filter by date range if provided
         start_date = self.request.query_params.get('start_date')
         end_date = self.request.query_params.get('end_date')
@@ -334,7 +334,7 @@ class BookingViewSet(viewsets.ModelViewSet):
             Response: API response with reserved bookings.
         """
         # Filter for reserved bookings
-        bookings = self.get_queryset().filter(booking_status='Reserved')
+        bookings = self.get_queryset().filter(car__isnull=True)
         serializer = self.get_serializer(bookings, many=True)
         return Response({
             "data": serializer.data,

@@ -36,6 +36,7 @@ class BookingSerializer(serializers.ModelSerializer):
     car_details = CarListSerializer(source='car', read_only=True)
     original_car_details = CarListSerializer(source='original_car', read_only=True)
     payments = PaymentSerializer(many=True, read_only=True)
+    overdue_fee = serializers.SerializerMethodField()
     extensions = BookingExtensionSerializer(many=True, read_only=True)
     duration_days = serializers.IntegerField(source='get_duration_days', read_only=True)
     remaining_balance = serializers.SerializerMethodField()
@@ -62,12 +63,64 @@ class BookingSerializer(serializers.ModelSerializer):
 
     def get_remaining_balance(self, obj):
         """
-        Calculate the remaining balance for the booking.
-
-        Returns:
-            Decimal: Remaining amount to be paid.
+        Calculate the remaining balance for the booking, including overdue fee.
         """
-        return obj.total_amount - obj.paid_amount
+        today = timezone.now().date()
+        overdue_fee = 0
+        if obj.end_date and today > obj.end_date and not obj.car_returned:
+            days_overdue = (today - obj.end_date).days
+            if obj.car and obj.car.fee:
+                overdue_fee = obj.car.fee * days_overdue
+        return obj.total_amount + overdue_fee - obj.paid_amount
+
+    # Calculate overdue fee based on booking end date and car return status for the serializer field.
+    def get_overdue_fee(self, obj):
+        """ 
+        Calculate overdue fee if applicable.
+        If the booking end date has passed and the car has not been returned,
+        calculate the fee based on the number of overdue days and the car's fee.
+        Returns:
+            Decimal: Overdue fee amount, or 0 if not overdue.
+        """
+        today = timezone.now().date()
+        if obj.end_date and today > obj.end_date and not obj.car_returned:
+            days_overdue = (today - obj.end_date).days
+            if obj.car and obj.car.fee:
+                return obj.car.fee * days_overdue
+        return 0
+    
+    # Calculate overdue fee based on car fee and overdue days.
+    def calculate_overdue_fee(self, car, end_date, car_returned):
+        """
+        Calculate overdue fee based on car fee and overdue days.
+        Args:
+            car (Car): The car being booked.
+            end_date (date): End date of the booking.
+            car_returned (bool): Whether the car has been returned.
+        Returns:
+            Decimal: Overdue fee amount, or 0 if not overdue.
+        """
+        today = timezone.now().date()
+        if end_date and today > end_date and not car_returned:
+            days_overdue = (today - end_date).days
+            if car and car.fee:
+                return car.fee * days_overdue
+        return 0
+    
+    def calculate_subtotal(self, car, start_date, end_date):
+        """
+        Calculate the subtotal for the booking based on car fee and duration.
+        Args:
+            car (Car): The car being booked.
+            start_date (date): Start date of the booking.
+            end_date (date): End date of the booking.
+        Returns:
+            Decimal: Total fee for the booking duration, or 0 if invalid.
+        """
+        if car and start_date and end_date:
+            duration_days = (end_date - start_date).days
+            return car.fee * duration_days
+        return 0
     
     def validate(self, data):
         """
@@ -106,25 +159,76 @@ class BookingSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         """
         Create a new booking instance.
-
-        Calculates subtotal and total amount based on car and dates.
+        Calculates subtotal and total_amount based on car, start_date, and end_date.
+        Args:
+            validated_data (dict): Data to create the booking with.
+        Returns:
+            Booking: The newly created booking instance.
         """
         car = validated_data.get('car')
-        if car:
-            delta = (validated_data['end_date'] - validated_data['start_date']).days
-            validated_data['subtotal'] = car.fee * delta
-            tax = validated_data.get('tax', 0)
-            discount = validated_data.get('discount', 0)
-            validated_data['total_amount'] = validated_data['subtotal'] + tax - discount
-        else:
-            # Set defaults for reserved bookings
-            validated_data['subtotal'] = 0
-            validated_data['total_amount'] = 0
-            validated_data['booking_status'] = 'Reserved'
-            validated_data['pickup_time'] = validated_data.get('pickup_time', None)
-            validated_data['dropoff_time'] = validated_data.get('dropoff_time', None)
+        start_date = validated_data.get('start_date')
+        end_date = validated_data.get('end_date')
+        car_returned = validated_data.get('car_returned', False)
+        tax = validated_data.get('tax', 0)
+        discount = validated_data.get('discount', 0)
+        paid_amount = validated_data.get('paid_amount', 0)
         
+        # Calculate subtotal and total
+        subtotal = self.calculate_subtotal(car, start_date, end_date)
+        validated_data['subtotal'] = subtotal
+        validated_data['total_amount'] = subtotal + tax - discount
+        
+        # Calculate overdue fee (if you want to include it in payment_status logic)
+        overdue_fee = self.calculate_overdue_fee(car, end_date, car_returned)
+        total_due = validated_data['total_amount'] + overdue_fee
+        
+         # Set payment_status automatically
+        if paid_amount == 0:
+            validated_data['payment_status'] = 'Unpaid'
+        elif paid_amount < total_due:
+            validated_data['payment_status'] = 'Partial'
+        else:
+            validated_data['payment_status'] = 'Paid'
+
         return super().create(validated_data)
+    
+    def update(self, instance, validated_data):
+        """
+        Update an existing booking instance.
+        Updates subtotal and total_amount based on new data.
+        Args:
+            instance (Booking): The existing booking instance to update.
+            validated_data (dict): Data to update the booking with.
+        Returns:
+            Booking: The updated booking instance.
+        """
+        car = validated_data.get('car', instance.car)
+        start_date = validated_data.get('start_date', instance.start_date)
+        end_date = validated_data.get('end_date', instance.end_date)
+        car_returned = validated_data.get('car_returned', instance.car_returned)
+        tax = validated_data.get('tax', instance.tax)
+        discount = validated_data.get('discount', instance.discount)
+        paid_amount = validated_data.get('paid_amount', instance.paid_amount)
+        
+         # Calculate subtotal and total
+        subtotal = self.calculate_subtotal(car, start_date, end_date)
+        validated_data['subtotal'] = subtotal
+        validated_data['total_amount'] = subtotal + tax - discount
+
+        # Calculate overdue fee (if you want to include it in payment_status logic)
+        overdue_fee = self.calculate_overdue_fee(car, end_date, car_returned)
+        total_due = validated_data['total_amount'] + overdue_fee
+
+        # Set payment_status automatically
+        if paid_amount == 0:
+            validated_data['payment_status'] = 'Unpaid'
+        elif paid_amount < total_due:
+            validated_data['payment_status'] = 'Partial'
+        else:
+            validated_data['payment_status'] = 'Paid'
+
+        return super().update(instance, validated_data)
+
 
 class BookingListSerializer(serializers.ModelSerializer):
     """
@@ -140,6 +244,7 @@ class BookingListSerializer(serializers.ModelSerializer):
     pickup_time = serializers.TimeField(read_only=True)
     dropoff_time = serializers.TimeField(read_only=True)
     booking_status = serializers.SerializerMethodField()
+    overdue_fee = serializers.SerializerMethodField()
 
     def get_car_name(self, obj):
         """
@@ -186,13 +291,21 @@ class BookingListSerializer(serializers.ModelSerializer):
             return "Overdue"
         # Fallback: show DB value
         return obj.booking_status
+    
+    def get_overdue_fee(self, obj):
+        today = timezone.now().date()
+        if obj.end_date and today > obj.end_date and not obj.car_returned:
+            days_overdue = (today - obj.end_date).days
+            if obj.car and obj.car.fee:
+                return obj.car.fee * days_overdue
+        return 0
 
     class Meta:
         model = Booking
         fields = [
             'id', 'booking_id', 'customer_name', 'customer_address', 'car_name',
             'car_image', 'start_date', 'end_date', 'pickup_time', 'dropoff_time',
-            'booking_status', 'payment_status', 'total_amount', 'paid_amount', 'duration_days'
+            'booking_status', 'payment_status', 'total_amount', 'paid_amount', 'duration_days', 'overdue_fee'
         ]
 
 class BookingSwapSerializer(serializers.Serializer):

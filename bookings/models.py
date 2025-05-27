@@ -132,29 +132,18 @@ class Booking(models.Model):
             
             if overlapping_bookings.exists():
                 raise ValidationError('This car is already booked for the selected dates')
-    
+            
     def save(self, *args, **kwargs):
         """
         Save the booking instance.
 
         - Generates a unique booking ID if not set.
-        - Calculates subtotal and total amount.
         - Validates booking before saving.
         """
         # Generate booking ID on creation
         if not self.booking_id:
             unique_id = str(uuid.uuid4()).split('-')[0]
             self.booking_id = f"BK-{timezone.now().strftime('%Y%m%d')}-{unique_id}"
-        
-        # Calculate subtotal and total
-        if not self.id:  # For new bookings
-            delta = (self.end_date - self.start_date).days
-            if self.car:
-                self.subtotal = self.car.fee * delta
-                self.total_amount = self.subtotal + self.tax - self.discount
-            else:
-                self.subtotal = 0
-                self.total_amount = 0
         
         self.clean()
         super().save(*args, **kwargs)
@@ -305,25 +294,9 @@ class Payment(models.Model):
         """
         Save the payment and update booking payment status.
 
-        Updates paid amount, payment status, and payment date on the booking.
         """
         super().save(*args, **kwargs)
-        
-        # Update booking payment status
         booking = self.booking
-        total_paid = Payment.objects.filter(booking=booking, is_successful=True).aggregate(
-            total=models.Sum('amount'))['total'] or 0
-        
-        booking.paid_amount = total_paid
-        
-        if total_paid >= booking.total_amount:
-            booking.payment_status = 'Paid'
-        elif total_paid > 0:
-            booking.payment_status = 'Partial'
-        else:
-            booking.payment_status = 'Unpaid'
-            
-        booking.save(update_fields=['paid_amount', 'payment_status'])
         
         # If this is the first payment, update payment date
         if not booking.payment_date:

@@ -18,6 +18,12 @@ class RegisterSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = ['email', 'full_name', 'password', 'user_image_url', 'is_fingerprint_enabled', 'login_device_info']
 
+    def validate_email(self, value):
+        """
+        Always return a lowercased email.
+        """
+        return value.lower()
+    
     def create(self, validated_data):
         """
         Create and return a new CustomUser instance.

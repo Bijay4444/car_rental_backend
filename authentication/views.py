@@ -27,31 +27,56 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     Validates user credentials using email and password, and returns JWT tokens.
     Raises custom error codes for invalid email or password.
     """
+    username_field = 'email'
+     
     def validate(self, attrs):
-        email = attrs.get("email")
+        """
+        Validate user credentials and generate JWT tokens.
+        Args:
+            attrs (dict): Contains 'email' and 'password'.
+        Returns:
+            dict: Contains JWT tokens if authentication is successful.
+        Raises:
+            AuthenticationFailed: If authentication fails, raises with custom error codes.
+        """
+        # Get email and password from input, strip spaces
+        email = attrs.get("email", "").strip()
         password = attrs.get("password")
 
-        # Check if user with this email exists
+        # Try to find user with case-insensitive email lookup
         try:
-            user = User.objects.get(email=email)
+            user = User.objects.get(email__iexact=email)
         except User.DoesNotExist:
-            # Email not found - raise custom error with code 222
+            # No user found with this email
             raise AuthenticationFailed({
                 "detail": "No active account found with the given credentials",
                 "status_code": int(222)
             })
 
-        # Email exists, check password
-        user = authenticate(email=email, password=password)
-        if user is None:
-            # Password incorrect - raise custom error with code 111
+        # Check password using Django's secure method
+        if not user.check_password(password):
+            # Password is incorrect
             raise AuthenticationFailed({
                 "detail": "Invalid password",
                 "status_code": int(111)
             })
 
-        # If authentication successful, proceed with normal flow
-        return super().validate(attrs)
+        # Check if user is active
+        if not user.is_active:
+            raise AuthenticationFailed({
+                "detail": "User is inactive",
+                "status_code": int(333)
+            })
+
+        # Generate JWT tokens for the authenticated user
+        refresh = self.get_token(user)
+        data = {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }
+        return data
+
+
 
 #-----Registration 
  

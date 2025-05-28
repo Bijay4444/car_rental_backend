@@ -28,6 +28,17 @@ class CustomUser(AbstractUser):
     REQUIRED_FIELDS = ['full_name']
     
     objects = CustomUserManager()  # From manager defined in managers.py
+    
+    def save(self, *args, **kwargs):
+        """
+        Override save method to normalize email to lowercase before saving.
+        Args:
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+        """
+        if self.email:
+            self.email = self.email.lower()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         """

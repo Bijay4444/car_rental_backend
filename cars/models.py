@@ -170,7 +170,7 @@ class CarDeleteReason(models.Model):
     ]
     
     car = models.ForeignKey(Car, on_delete=models.CASCADE, related_name='delete_reasons')
-    reason = models.CharField(max_length=20, choices=REASON_CHOICES)
+    reason = models.CharField(max_length=100, choices=REASON_CHOICES)
     description = models.TextField(blank=True, null=True)
     deleted_at = models.DateTimeField(auto_now_add=True)
     deleted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)

@@ -9,6 +9,7 @@ colorama==0.4.6
 cryptography==44.0.3
 dj-rest-auth==7.0.1
 Django==5.2
+django-cors-headers==4.7.0
 django-filter==25.1
 djangorestframework==3.16.0
 djangorestframework_simplejwt==5.5.0

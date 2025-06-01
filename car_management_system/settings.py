@@ -24,13 +24,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-x!!wcj#^p$6g9(+r8xsu$vc^@)a+e)!*!^w3wy$@gk1^fjlyt@'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'unsafe-default-key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost').split(',')
 
 # Application definition
 
@@ -60,9 +59,11 @@ INSTALLED_APPS = [
     'dj_rest_auth',
     'django_filters',
     'drf_yasg',  # For API documentation
+    'corsheaders',  # For handling CORS
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',  # Middleware for handling CORS
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -105,7 +106,7 @@ WSGI_APPLICATION = 'car_management_system.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.postgresql_psycopg2'),
-        'NAME': os.getenv('DB_NAME', 'Ecommerce_Main'),
+        'NAME': os.getenv('DB_NAME', 'car_rental'),
         'USER': os.getenv('DB_USER', 'postgres'),
         'PASSWORD': os.getenv('DB_PASSWORD', 'admin'),
         'HOST': os.getenv('DB_HOST', 'localhost'),
@@ -149,11 +150,20 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+#csrf and session cookies:
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+
+#XSS/Clickjacking
+SECURE_BROWSER_XSS_FILTER = True
+X_FRAME_OPTIONS = 'DENY'
 
 # Custom user model
 AUTH_USER_MODEL = 'authentication.CustomUser'
@@ -165,6 +175,10 @@ REST_FRAMEWORK = {
     ),
 }
 
+#Use JWT with dj-rest-auth
+REST_USE_JWT = True
+
+# Simple JWT settings
 from datetime import timedelta
 
 SIMPLE_JWT = {
@@ -179,33 +193,11 @@ SIMPLE_JWT = {
 }
 
 
-#Use JWT with dj-rest-auth
-REST_USE_JWT = True
-REST_FRAMEREST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
-}
-
 # Media files settings
 # MEDIA_URL is the URL that will serve the media files
 # MEDIA_ROOT is the filesystem path to the directory where media files are stored
 MEDIA_URL = '/media/'  # URL to serve media files
-MEDIA_ROOT = BASE_DIR / 'media'  # Directory where media files are stored
-
-# Static files settings
-import os
-
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-STATIC_URL = '/static/'  # URL prefix to access static files
-
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),  # Directory where you put your static files during development
-]
-
-# Optional: Where `collectstatic` will collect all static files for production
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media') # Directory where media files are stored
 
 # Firebase settings 
 # Firebase credentials path
@@ -231,3 +223,27 @@ EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
 # This is the email address that will appear as the sender of the emails
+
+# CORS settings
+CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '').split(',')
+CORS_ALLOW_CREDENTIALS = True  # Allow cookies to be included in cross-origin requests
+
+#LOGGING CONFIGURATION
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'file': {
+            'level': 'WARNING',
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'django.log',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file'],
+            'level': 'WARNING',
+            'propagate': True,
+        },
+    },
+}

@@ -138,6 +138,39 @@ class BookingViewSet(viewsets.ModelViewSet):
         Returns:
             Response: API response with created booking data.
         """
+        # Pre-validate car exists
+        car_id = request.data.get('car')
+        if car_id:
+            try:
+                from cars.models import Car
+                car = Car.objects.get(id=car_id, is_deleted=False)
+                # Check if car is available
+                if car.availability != 'Available':
+                    return Response({
+                        "data": None,
+                        "message": "Selected car is not available for booking",
+                        "status_code": 409
+                    }, status=409)
+            except Car.DoesNotExist:
+                return Response({
+                    "data": None,
+                    "message": "Selected car does not exist",
+                    "status_code": 404
+                }, status=404)
+        
+        # Pre-validate customer exists  
+        customer_id = request.data.get('customer')
+        if customer_id:
+            try:
+                from customers.models import Customer
+                customer = Customer.objects.get(id=customer_id)
+            except Customer.DoesNotExist:
+                return Response({
+                    "data": None,
+                    "message": "Selected customer does not exist", 
+                    "status_code": 404
+                }, status=404)
+            
         serializer = self.get_serializer(data=request.data)
         try:
             serializer.is_valid(raise_exception=True)

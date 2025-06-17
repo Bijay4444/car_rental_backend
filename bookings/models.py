@@ -216,6 +216,52 @@ class Booking(models.Model):
             int: Number of days.
         """
         return (self.end_date - self.start_date).days
+    
+    def get_total_balance(self):
+        """
+        Calculate the remaining balance for the booking.
+        Includes overdue fees if applicable.
+        
+        Returns:
+            Decimal: Remaining balance (total_amount + overdue_fee - paid_amount)
+        """
+        from django.utils import timezone
+        
+        # Calculate overdue fee
+        overdue_fee = 0
+        if self.end_date and not self.car_returned:
+            today = timezone.now().date()
+            if today > self.end_date and self.car and self.car.fee:
+                days_overdue = (today - self.end_date).days
+                overdue_fee = self.car.fee * days_overdue
+        
+        # Total balance = total_amount + overdue_fee + accident_charges - paid_amount
+        return (self.total_amount + overdue_fee + self.accident_charges) - self.paid_amount
+
+    def get_total_paid(self):
+        """
+        Get total amount paid from all payment records.
+        
+        Returns:
+            Decimal: Sum of all successful payments
+        """
+        return self.payments.filter(is_successful=True).aggregate(
+            total=models.Sum('amount')
+        )['total'] or 0
+
+    @property
+    def calculated_paid_amount(self):
+        """
+        Property to get calculated paid amount from payment records.
+        """
+        return self.get_total_paid()
+
+    @property 
+    def balance_due(self):
+        """
+        Property to get remaining balance.
+        """
+        return self.get_total_balance()
 
     
     def __str__(self):
@@ -292,16 +338,37 @@ class Payment(models.Model):
     
     def save(self, *args, **kwargs):
         """
-        Save the payment and update booking payment status.
-
+        Save the payment and update booking payment status and paid_amount.
         """
         super().save(*args, **kwargs)
+        
+        # Update booking's paid_amount and payment_status
         booking = self.booking
         
-        # If this is the first payment, update payment date
-        if not booking.payment_date:
+        # Calculate total paid from all successful payments
+        total_paid = booking.payments.filter(is_successful=True).aggregate(
+            total=models.Sum('amount')
+        )['total'] or 0
+        
+        # Update booking
+        booking.paid_amount = total_paid
+        
+        # Calculate total due (including overdue fees)
+        total_due = booking.get_total_balance() + total_paid  # This gives us the original total
+        
+        # Update payment status
+        if total_paid == 0:
+            booking.payment_status = 'Unpaid'
+        elif total_paid < total_due:
+            booking.payment_status = 'Partial'
+        else:
+            booking.payment_status = 'Paid'
+        
+        # Update payment date if this is the first payment
+        if not booking.payment_date and self.is_successful:
             booking.payment_date = self.payment_date
-            booking.save(update_fields=['payment_date'])
+        
+        booking.save(update_fields=['paid_amount', 'payment_status', 'payment_date'])
     
     def __str__(self):
         """

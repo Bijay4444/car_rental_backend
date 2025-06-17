@@ -320,7 +320,8 @@ class BookingListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'booking_id', 'customer_name', 'customer_address', 'car_name',
             'car_image', 'start_date', 'end_date', 'pickup_time', 'dropoff_time',
-            'booking_status', 'payment_status', 'total_amount', 'paid_amount', 'duration_days', 'overdue_fee'
+            'booking_status', 'payment_status', 'total_amount', 'paid_amount', 
+            'total_paid', 'total_balance', 'duration_days', 'overdue_fee'
         ]
 
 class BookingSwapSerializer(serializers.Serializer):

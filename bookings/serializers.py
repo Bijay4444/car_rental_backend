@@ -36,6 +36,8 @@ class BookingSerializer(serializers.ModelSerializer):
     car_details = CarListSerializer(source='car', read_only=True)
     original_car_details = CarListSerializer(source='original_car', read_only=True)
     payments = PaymentSerializer(many=True, read_only=True)
+    total_paid = serializers.SerializerMethodField()
+    total_balance = serializers.SerializerMethodField()
     overdue_fee = serializers.SerializerMethodField()
     extensions = BookingExtensionSerializer(many=True, read_only=True)
     duration_days = serializers.IntegerField(source='get_duration_days', read_only=True)
@@ -48,7 +50,6 @@ class BookingSerializer(serializers.ModelSerializer):
         decimal_places=2, 
         required=False
     )
-    
     class Meta:
         model = Booking
         fields = '__all__'
@@ -60,19 +61,25 @@ class BookingSerializer(serializers.ModelSerializer):
             'subtotal': {'required': False, 'allow_null': True},
             'total_amount': {'required': False, 'allow_null': True},
         }
+        
+    def get_total_paid(self, obj):
+        """
+        Get total amount paid from payment records.
+        """
+        return obj.get_total_paid()
+    
+    def get_total_balance(self, obj):
+        """
+        Calculate remaining balance including overdue fees.
+        """
+        return obj.get_total_balance()
 
     def get_remaining_balance(self, obj):
         """
-        Calculate the remaining balance for the booking, including overdue fee.
+        Calculate the remaining balance for the booking.
         """
-        today = timezone.now().date()
-        overdue_fee = 0
-        if obj.end_date and today > obj.end_date and not obj.car_returned:
-            days_overdue = (today - obj.end_date).days
-            if obj.car and obj.car.fee:
-                overdue_fee = obj.car.fee * days_overdue
-        return obj.total_amount + overdue_fee - obj.paid_amount
-
+        return obj.get_total_balance()
+    
     # Calculate overdue fee based on booking end date and car return status for the serializer field.
     def get_overdue_fee(self, obj):
         """ 
@@ -245,6 +252,8 @@ class BookingListSerializer(serializers.ModelSerializer):
     dropoff_time = serializers.TimeField(read_only=True)
     booking_status = serializers.SerializerMethodField()
     overdue_fee = serializers.SerializerMethodField()
+    total_paid = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    total_balance = serializers.SerializerMethodField()
 
     def get_car_name(self, obj):
         """
@@ -291,6 +300,12 @@ class BookingListSerializer(serializers.ModelSerializer):
             return "Overdue"
         # Fallback: show DB value
         return obj.booking_status
+    
+    def get_total_balance(self, obj):
+        """
+        Calculate remaining balance.
+        """
+        return obj.get_total_balance()
     
     def get_overdue_fee(self, obj):
         today = timezone.now().date()

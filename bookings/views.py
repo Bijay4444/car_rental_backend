@@ -38,7 +38,9 @@ class BookingViewSet(viewsets.ModelViewSet):
         - today_pickups: List today's pickups.
         - today_returns: List today's returns.
     """
-    queryset = Booking.objects.all().select_related('customer', 'car', 'original_car', 'created_by')
+    queryset = Booking.objects.all().select_related(
+        'customer', 'car', 'original_car', 'created_by'
+    ).prefetch_related('payments', 'extensions')
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['booking_status', 'payment_status', 'car_returned']
     search_fields = ['booking_id', 'customer__name', 'car__car_name']
@@ -75,6 +77,18 @@ class BookingViewSet(viewsets.ModelViewSet):
             QuerySet: Filtered queryset.
         """
         queryset = super().get_queryset()
+        
+        # Annotate with total paid amount for better performance
+        from django.db.models import Sum, Case, When, DecimalField
+        
+        queryset = queryset.annotate(
+            total_paid=Case(
+                When(payments__is_successful=True, 
+                     then=Sum('payments__amount')),
+                default=0,
+                output_field=DecimalField(max_digits=10, decimal_places=2)
+            )
+        )
         
         # Exclude reserved bookings by default
         if getattr(self, 'action', None) == 'list':

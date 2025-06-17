@@ -180,3 +180,5 @@ firebase_key.json
 firebase-messaging-sw.js
 
 notifications/templates/
+
+.github

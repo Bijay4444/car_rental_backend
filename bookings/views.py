@@ -157,14 +157,7 @@ class BookingViewSet(viewsets.ModelViewSet):
         if car_id:
             try:
                 from cars.models import Car
-                car = Car.objects.get(id=car_id, is_deleted=False)
-                # Check if car is available
-                if car.availability != 'Available':
-                    return Response({
-                        "data": None,
-                        "message": "Selected car is not available for booking",
-                        "status_code": 409
-                    }, status=409)
+                car = Car.objects.get(id=car_id, is_deleted=False)                
             except Car.DoesNotExist:
                 return Response({
                     "data": None,

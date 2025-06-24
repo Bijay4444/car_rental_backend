@@ -177,6 +177,7 @@ redis.conf
 # Ignore my local files with sensitive data
 firebase-adminsdk.json
 firebase_key.json
+myrides-raracube-firebase-adminsdk-fbsvc-4875620ad6.json
 firebase-messaging-sw.js
 
 notifications/templates/

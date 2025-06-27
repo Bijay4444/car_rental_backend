@@ -45,6 +45,7 @@ class BookingViewSet(viewsets.ModelViewSet):
     filterset_fields = ['booking_status', 'payment_status', 'car_returned']
     search_fields = ['booking_id', 'customer__name', 'car__car_name']
     ordering_fields = ['start_date', 'end_date', 'created_at', 'total_amount']
+    ordering = ['-created_at']
     permission_classes = [IsAuthenticated]
     
     def get_serializer_class(self):
@@ -113,7 +114,7 @@ class BookingViewSet(viewsets.ModelViewSet):
         if car_id:
             queryset = queryset.filter(car_id=car_id)
         
-        return queryset
+        return queryset.order_by('-created_at')
     
     def list(self, request, *args, **kwargs):
         """

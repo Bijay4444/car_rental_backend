@@ -502,12 +502,20 @@ class BookingViewSet(viewsets.ModelViewSet):
         booking.booking_status = 'Cancelled'
         booking.save(update_fields=['booking_status'])
 
-        # If there is a car assigned and it's not returned, make it available again
+        # ✅ ENSURE: Car becomes available after cancellation
         if booking.car and not booking.car_returned:
             car = booking.car
-            car.availability = 'Available'
-            car.status = 'Active'
-            car.save(update_fields=['availability', 'status'])
+            # Check if there are other active bookings for this car
+            other_active_bookings = Booking.objects.filter(
+                car=car,
+                booking_status='Active'
+            ).exclude(id=booking.id)
+            
+            # Only make available if no other active bookings exist
+            if not other_active_bookings.exists():
+                car.availability = 'Available'
+                car.status = 'Active'
+                car.save(update_fields=['availability', 'status'])
 
         return Response({
             "data": BookingSerializer(booking).data,
@@ -627,5 +635,5 @@ class BookingExtensionViewSet(viewsets.ReadOnlyModelViewSet):
             "message": "Booking extension details fetched successfully",
             "status_code": status.HTTP_200_OK
         }, status=status.HTTP_200_OK)
-        
-    
+
+

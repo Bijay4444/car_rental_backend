@@ -153,14 +153,16 @@ class BookingSerializer(serializers.ModelSerializer):
         booking_id = self.instance.id if self.instance else None
 
         if car and start_date and end_date:
-            overlapping = Booking.objects.filter(
+            is_available = Booking.check_car_availability(
                 car=car,
-                start_date__lt=end_date,
-                end_date__gt=start_date,
-            ).exclude(id=booking_id)
+                start_date=start_date,
+                end_date=end_date,
+                exclude_booking_id=booking_id
+            )
             
-            if overlapping.exists():
+            if not is_available:
                 raise serializers.ValidationError("Car is already booked for the selected dates.")
+        
         return data
     
     def create(self, validated_data):

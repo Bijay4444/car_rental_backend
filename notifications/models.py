@@ -43,6 +43,14 @@ class NotificationToken(models.Model):
         updated_at (datetime): When the token was last updated.
     """
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    token = models.CharField(max_length=255)
+    token = models.TextField()
+    device_type = models.CharField(max_length=20, default='mobile')
+    platform = models.CharField(max_length=10, default='unknown')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['token']  # Only token needs to be unique globally
+
+    def __str__(self):
+        return f"{self.user.email} - {self.device_type} ({self.token[:20]}...)"

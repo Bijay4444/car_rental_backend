@@ -61,7 +61,7 @@ INSTALLED_APPS = [
     'bookings',
     'customers',
     'menu',
-    'notifications',
+    'notifications.apps.NotificationsConfig',
     'dashboard',
     
     

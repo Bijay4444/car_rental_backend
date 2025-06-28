@@ -111,6 +111,34 @@ class Booking(models.Model):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, 
                                  null=True, related_name='bookings_created')
     
+    @classmethod
+    def check_car_availability(cls, car, start_date, end_date, exclude_booking_id=None):
+        """
+        Check if a car is available for the given date range.
+        
+        Args:
+            car (Car): The car to check availability for
+            start_date (date): Start date of the booking
+            end_date (date): End date of the booking
+            exclude_booking_id (int, optional): Booking ID to exclude from check (for updates)
+        
+        Returns:
+            bool: True if car is available, False otherwise
+        """
+        overlapping_bookings = cls.objects.filter(
+            car=car,
+            start_date__lt=end_date,
+            end_date__gt=start_date,
+        ).exclude(
+            booking_status__in=['Cancelled', 'Returned']  # Exclude cancelled and returned
+        )
+        
+        # Exclude current booking if updating
+        if exclude_booking_id:
+            overlapping_bookings = overlapping_bookings.exclude(id=exclude_booking_id)
+        
+        return not overlapping_bookings.exists()
+
     def clean(self):
         """
         Validate booking dates and car availability.
@@ -121,16 +149,16 @@ class Booking(models.Model):
         if self.start_date and self.end_date and self.start_date > self.end_date:
             raise ValidationError('Start date must be before end date')
             
-        # Check car availability
-        if self.car and not self.id:  # Only check on new bookings
-            overlapping_bookings = Booking.objects.filter(
+        # Check car availability using the new method
+        if self.car:
+            is_available = self.check_car_availability(
                 car=self.car,
-                booking_status__in=['Active', 'Reserved'],
-                start_date__lte=self.end_date,
-                end_date__gte=self.start_date
+                start_date=self.start_date,
+                end_date=self.end_date,
+                exclude_booking_id=self.id  # Exclude current booking for updates
             )
             
-            if overlapping_bookings.exists():
+            if not is_available:
                 raise ValidationError('This car is already booked for the selected dates')
             
     def save(self, *args, **kwargs):

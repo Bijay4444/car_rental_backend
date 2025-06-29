@@ -299,7 +299,10 @@ class Booking(models.Model):
         Returns:
             str: Booking summary.
         """
-        return f"Booking {self.booking_id} - {self.customer.name} - {self.car.car_name}"
+        customer_name = self.customer.name if self.customer else "No Customer"
+        car_name = self.car.car_name if self.car else "No Car"
+        status = f" ({self.booking_status})" if hasattr(self, 'booking_status') else ""
+        return f"{self.booking_id} - {customer_name} | {car_name}{status}"
     
     class Meta:
         ordering = ['-created_at']

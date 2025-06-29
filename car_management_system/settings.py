@@ -183,15 +183,16 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CSRF_COOKIE_SECURE = not DEBUG  # Only secure in production
 SESSION_COOKIE_SECURE = not DEBUG  # Only secure in production
 
-# Add these production security settings:
-if not DEBUG:
-    SECURE_SSL_REDIRECT = True  # Force HTTPS
-    SECURE_HSTS_SECONDS = 31536000
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
+# Security settings with environment override
+SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True' if not DEBUG else 'False').lower() == 'true'
+
+if not DEBUG and SECURE_SSL_REDIRECT:
+    SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '31536000'))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = os.getenv('SECURE_HSTS_INCLUDE_SUBDOMAINS', 'True').lower() == 'true'
+    SECURE_HSTS_PRELOAD = os.getenv('SECURE_HSTS_PRELOAD', 'True').lower() == 'true'
     SECURE_CONTENT_TYPE_NOSNIFF = True
 
-#XSS/Clickjacking
+# XSS/Clickjacking
 SECURE_BROWSER_XSS_FILTER = True
 X_FRAME_OPTIONS = 'DENY'
 

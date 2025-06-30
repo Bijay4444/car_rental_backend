@@ -24,25 +24,56 @@ from drf_yasg import openapi
 from rest_framework import permissions
 from django.contrib import admin
 from django.urls import path, include
+from django.http import JsonResponse
+from django.shortcuts import redirect
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
     TokenVerifyView,
 )
 
+def api_root(request):
+    return JsonResponse({
+        'message': 'Car Rental API is running! 🚗',
+        'version': 'v1.0',
+        'endpoints': {
+            'admin': '/admin/',
+            'api_docs': '/swagger/',
+            'cars': '/api/cars/',
+            'bookings': '/api/bookings/',
+            'customers': '/api/customers/',
+            'authentication': '/api/authentication/',
+            'dashboard': '/api/dashboard/',
+            'menu': '/api/menu/',
+            'notifications': '/api/notifications/',
+            'token': {
+                'obtain': '/api/token/',
+                'refresh': '/api/token/refresh/',
+                'verify': '/api/token/verify/',
+            }
+        },
+        'status': 'live'
+    })
+
 # Swagger/OpenAPI schema view for API documentation
 schema_view = get_schema_view(
    openapi.Info(
       title="Car Rental API",
       default_version='v1',
-      description="API documentation for Car Rental project",
+      description="API documentation for Car Rental Management System",
    ),
    public=True,
    permission_classes=(permissions.AllowAny,),
 )
 
 urlpatterns = [
+    # Root endpoint
+    path('', api_root, name='api_root'),
+    
+    # Admin panel
     path('admin/', admin.site.urls),
+    
+    # JWT Token endpoints
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
@@ -52,40 +83,25 @@ urlpatterns = [
     path('api/authentication/', include('dj_rest_auth.urls')),# dj-rest-auth endpoints(password reset, etc.)
     path('api/authentication/', include('django.contrib.auth.urls')),# provides standard auth URLs(password rest confirm, etc.)
     
-    # Cars App
+    # Apps
     path('api/cars/', include('cars.urls')), 
-    
-    # Bookings App
     path('api/bookings/', include('bookings.urls')),
-    
-    # Customers App
     path('api/customers/', include('customers.urls')),
-
-    # Menu App
     path('api/menu/', include('menu.urls')),
-
-    # Dashboard App
     path('api/dashboard/', include('dashboard.urls')),
-    
-    # Notifications App
     path('api/notifications/', include('notifications.urls')), 
     
-    # Swagger/OpenAPI documentation
+    # API Documentation
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),   
 ]
 
 # Serve static and media files in development
-# This is only for development purposes. In production, we will use a proper web server to serve static files.
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 # Serve the Firebase messaging service worker file
-# This is only for development purposes. In production, we will use a proper web server to serve static files.
-from django.views.static import serve
-import os
-
 urlpatterns += [
     path(
         'firebase-messaging-sw.js',

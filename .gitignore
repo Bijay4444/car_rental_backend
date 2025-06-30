@@ -190,7 +190,9 @@ firebase-messaging-sw.js
 
 notifications/templates/
 
-.github
+# GitHub - exclude specific files but keep workflows
+.github/ISSUE_TEMPLATE/
+.github/PULL_REQUEST_TEMPLATE/
 
 # Environment variables
 .env

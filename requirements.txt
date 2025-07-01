@@ -5,11 +5,13 @@ certifi==2025.4.26
 cffi==1.17.1
 charset-normalizer==3.4.2
 click==8.2.1
+cloudinary==1.44.1
 colorama==0.4.6
 cryptography==44.0.3
 dj-database-url==3.0.0
 dj-rest-auth==7.0.1
 Django==5.2
+django-cloudinary-storage==0.3.0
 django-cors-headers==4.7.0
 django-filter==25.1
 djangorestframework==3.16.0

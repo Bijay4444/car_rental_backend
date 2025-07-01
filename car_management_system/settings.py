@@ -9,9 +9,7 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-import cloudinary
-import cloudinary.uploader
-import cloudinary.api
+
 from pathlib import Path
 import os
 from dotenv import load_dotenv
@@ -58,10 +56,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
-    # Cloudinary and storage apps for handling media files
-    'cloudinary_storage',
-    'cloudinary',
     
     #local apps
     'authentication',
@@ -241,20 +235,12 @@ SIMPLE_JWT = {
     'USER_ID_CLAIM': 'user_id',
 }
 
-# Cloudinary settings
-CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME'),
-    'API_KEY': os.getenv('CLOUDINARY_API_KEY'),
-    'API_SECRET': os.getenv('CLOUDINARY_API_SECRET'),
-}
-
-# Use Cloudinary for media files
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 # Media files settings
 # MEDIA_URL is the URL that will serve the media files
 # MEDIA_ROOT is the filesystem path to the directory where media files are stored
 MEDIA_URL = '/media/'  # URL to serve media files
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media') # Directory where media files are stored
 
 # Firebase settings 
 # Firebase credentials path

@@ -755,3 +755,4 @@ zip -r car_rental_production.zip . \
 ```
 
 > **💡 Note**: Docker is for development convenience. Production deployment depends on your hosting provider's capabilities.
+> hosted on https://fuzionsautoapp.com/
